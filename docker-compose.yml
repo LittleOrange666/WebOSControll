@@ -1,6 +1,6 @@
 services:
   webos-bot:
-    image: littleorange666/webos_alarm:1.0.0
+    image: littleorange666/webos_alarm:1.0.1
     restart: on-failure
     environment:
       - TV_IP=${TV_IP}

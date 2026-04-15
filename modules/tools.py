@@ -64,3 +64,15 @@ async def run_alarm(second: int, volume: int):
     finally:
         await turn_off(client)
     logger.info("鬧鐘執行完成")
+
+
+async def test_alarm() -> bool:
+    client = await init()
+    try:
+        await asyncio.sleep(5)
+    except Exception as ex:
+        logger.error(ex)
+        return False
+    finally:
+        await turn_off(client)
+    return True

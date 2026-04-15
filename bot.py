@@ -1,12 +1,11 @@
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 from loguru import logger
 
-from modules.tools import run_alarm, get_env
+from modules.tools import run_alarm, get_env, test_alarm
 
 TOKEN = get_env("DC_TOKEN")
 
@@ -71,6 +70,15 @@ async def switch(interaction: discord.Interaction, status: app_commands.Choice[s
     else:
         bot.is_enabled = False
         await interaction.response.send_message("🔕 鬧鐘已 **關閉**")
+
+@bot.tree.command(name="check", description="檢查鬧鐘可否運行")
+async def stat(interaction: discord.Interaction):
+    await interaction.response.defer()
+    success = await test_alarm()
+    if success:
+        await interaction.followup.send("✅ 鬧鐘連線測試成功！系統可以正常運行。")
+    else:
+        await interaction.followup.send("❌ 鬧鐘連線測試失敗！請檢查鬧鐘狀態。")
 
 
 @bot.tree.command(name="stat", description="查看鬧鐘狀態與倒數")
