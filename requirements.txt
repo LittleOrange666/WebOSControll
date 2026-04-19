@@ -1,3 +1,4 @@
 discord.py
 aiowebostv
 loguru
+pyyaml

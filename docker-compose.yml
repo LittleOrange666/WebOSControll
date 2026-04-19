@@ -1,6 +1,6 @@
 services:
   webos-bot:
-    image: littleorange666/webos_alarm:1.0.1
+    image: littleorange666/webos_alarm:1.0.2
     restart: on-failure
     environment:
       - TV_IP=${TV_IP}
@@ -9,3 +9,5 @@ services:
       - DC_TOKEN=${DC_TOKEN}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data:/app/data

@@ -2,6 +2,7 @@ import asyncio
 import os
 
 from aiowebostv import WebOsClient
+from aiowebostv.exceptions import WebOsTvResponseTypeError
 from loguru import logger
 
 def get_env(key) -> str:
@@ -22,8 +23,11 @@ async def init() -> WebOsClient:
     client = WebOsClient(HOST, KEY)
     await client.connect()
     logger.info("正在開螢幕...")
-    await client.request('com.webos.service.tvpower/power/turnOnScreen')
-    await client.send_message("開螢幕成功")
+    try:
+        await client.request('com.webos.service.tvpower/power/turnOnScreen')
+        await client.send_message("開螢幕成功")
+    except WebOsTvResponseTypeError as ex:
+        logger.info("開螢幕失敗，可能已經開啟了螢幕，繼續執行...")
     return client
 
 async def play(client: WebOsClient, volume: int):
@@ -50,7 +54,7 @@ async def turn_off(client: WebOsClient):
         await client.disconnect()
 
 
-async def run_alarm(second: int, volume: int):
+async def run_alarm(second: int, volume: int) -> bool:
     logger.info("正在執行鬧鐘...")
     client = await init()
     try:
@@ -61,9 +65,11 @@ async def run_alarm(second: int, volume: int):
         await asyncio.sleep(5)
     except Exception as ex:
         logger.error(ex)
+        return False
     finally:
         await turn_off(client)
     logger.info("鬧鐘執行完成")
+    return True
 
 
 async def test_alarm() -> bool:
