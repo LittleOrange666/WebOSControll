@@ -196,9 +196,9 @@ async def trigger(interaction: discord.Interaction, seconds: int | None = None, 
     await interaction.response.send_message("正在響鈴...")
     suc = await run_alarm(seconds, volume)
     if not suc:
-        await interaction.response.edit_message(content="響鈴失敗！")
+        await interaction.edit_original_response(content="響鈴失敗！")
     else:
-        await interaction.response.edit_message(content="響鈴結束！")
+        await interaction.edit_original_response(content="響鈴結束！")
 
 
 if __name__ == "__main__":
