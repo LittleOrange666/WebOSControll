@@ -56,8 +56,9 @@ async def turn_off(client: WebOsClient):
 
 async def run_alarm(second: int, volume: int) -> bool:
     logger.info("正在執行鬧鐘...")
-    client = await init()
+    client = None
     try:
+        client = await init()
         await asyncio.sleep(5)
         await play(client, volume)
         await asyncio.sleep(second)
@@ -67,18 +68,21 @@ async def run_alarm(second: int, volume: int) -> bool:
         logger.error(ex)
         return False
     finally:
-        await turn_off(client)
+        if client is not None:
+            await turn_off(client)
     logger.info("鬧鐘執行完成")
     return True
 
 
 async def test_alarm() -> bool:
-    client = await init()
+    client = None
     try:
+        client = await init()
         await asyncio.sleep(5)
     except Exception as ex:
         logger.error(ex)
         return False
     finally:
-        await turn_off(client)
+        if client is not None:
+            await turn_off(client)
     return True
