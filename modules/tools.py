@@ -1,88 +1,73 @@
 import asyncio
-import os
 
-from aiowebostv import WebOsClient
-from aiowebostv.exceptions import WebOsTvResponseTypeError
 from loguru import logger
 
-def get_env(key) -> str:
-    res = os.getenv(key)
-    if res is None:
-        print(f"Please set the {key} environment variable.")
-        exit()
-    return res
+from .utils import get_env, ha_turn_on, ha_turn_off, ha_ison, ha_command, ha_button
 
-HOST = get_env("TV_IP")
-KEY = get_env("TV_KEY")
+MAC = get_env("TV_MAC")
 YT_TARGET = get_env("YT_TARGET")
 YT_APPID = "youtube.leanback.v4"
 
+async def init():
+    on = await ha_ison()
+    if not on:
+        logger.info("電視目前為關閉狀態，嘗試喚醒...")
+        await ha_turn_on()
+        await asyncio.sleep(5)
 
-async def init() -> WebOsClient:
-    logger.info("正在連線...")
-    client = WebOsClient(HOST, KEY)
-    await client.connect()
-    logger.info("正在開螢幕...")
-    try:
-        await client.request('com.webos.service.tvpower/power/turnOnScreen')
-        await client.send_message("開螢幕成功")
-    except WebOsTvResponseTypeError as ex:
-        logger.info("開螢幕失敗，可能已經開啟了螢幕，繼續執行...")
-    return client
-
-async def play(client: WebOsClient, volume: int):
+async def play(volume: int):
     params = {
         "contentTarget": "https://www.youtube.com/watch?v="+YT_TARGET
     }
     logger.info("正在開啟 YouTube 影片...")
-    await client.set_volume(volume)
+    await ha_command("audio/setVolume", {"volume": volume})
     await asyncio.sleep(5)
-    await client.launch_app_with_params(YT_APPID, params)
+    await ha_command("system.launcher/launch", {"id": YT_APPID, "params": params})
 
-async def stop(client: WebOsClient):
+async def stop():
     logger.info("正在關閉 YouTube 影片...")
-    await client.button("HOME")
+    await ha_button("HOME")
 
-async def turn_off(client: WebOsClient):
+async def turn_off():
     try:
-        logger.info("正在關螢幕...")
-        await client.request('com.webos.service.tvpower/power/turnOffScreen')
-        await client.send_message("關螢幕成功")
-    except Exception as ex:
-        logger.error(ex)
-    finally:
-        await client.disconnect()
+        logger.info("正在關機...")
+        await ha_turn_off()
+    except Exception:
+        logger.exception("出現錯誤")
+
+
+async def wake_up():
+    logger.info("正在喚醒...")
+    await ha_turn_on()
+    await asyncio.sleep(5)
+    if await ha_ison():
+        logger.info("喚醒成功")
+        return True
+    logger.error("喚醒失敗")
+    return False
 
 
 async def run_alarm(second: int, volume: int) -> bool:
     logger.info("正在執行鬧鐘...")
-    client = None
     try:
-        client = await init()
+        await init()
         await asyncio.sleep(5)
-        await play(client, volume)
+        await play(volume)
         await asyncio.sleep(second)
-        await stop(client)
+        await stop()
         await asyncio.sleep(5)
-    except Exception as ex:
-        logger.error(ex)
+    except Exception:
+        logger.exception("出現錯誤")
         return False
     finally:
-        if client is not None:
-            await turn_off(client)
+        await turn_off()
     logger.info("鬧鐘執行完成")
     return True
 
 
 async def test_alarm() -> bool:
-    client = None
-    try:
-        client = await init()
-        await asyncio.sleep(5)
-    except Exception as ex:
-        logger.error(ex)
-        return False
-    finally:
-        if client is not None:
-            await turn_off(client)
-    return True
+    if await ha_ison():
+        logger.info("目前為開啟狀態")
+        return True
+    logger.info("目前為關閉狀態")
+    return False

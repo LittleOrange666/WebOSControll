@@ -1,3 +1,4 @@
+import json
 import os.path
 from dataclasses import dataclass
 from datetime import datetime, timedelta, time
@@ -8,7 +9,8 @@ from discord import app_commands
 from discord.ext import commands, tasks
 from loguru import logger
 
-from modules.tools import run_alarm, get_env, test_alarm
+from modules.tools import run_alarm, get_env, test_alarm, wake_up
+from modules.utils import ha_command, ha_button
 
 TOKEN = get_env("DC_TOKEN")
 
@@ -119,6 +121,37 @@ async def check(interaction: discord.Interaction):
         await interaction.followup.send("✅ 鬧鐘連線測試成功！系統可以正常運行。")
     else:
         await interaction.followup.send("❌ 鬧鐘連線測試失敗！請檢查鬧鐘狀態。")
+
+
+@bot.tree.command(name="wake", description="嘗試開機")
+async def wake(interaction: discord.Interaction):
+    await interaction.response.defer()
+    success = await wake_up()
+    if success:
+        await interaction.followup.send("✅ 嘗試開機成功！系統可以正常運行。")
+    else:
+        await interaction.followup.send("❌ 嘗試開機失敗！請檢查鬧鐘狀態。")
+
+
+@bot.tree.command(name="button", description="發送按鈕指令到電視")
+@app_commands.describe(button="請輸入按鈕名稱，例如：HOME、BACK、VOLUMEUP、VOLUMEDOWN")
+async def the_button(interaction: discord.Interaction, button: str):
+    await interaction.response.defer()
+    await ha_button(button)
+    await interaction.followup.send(f"✅ 已發送按鈕 {button}")
+
+
+@bot.tree.command(name="command", description="發送指令到電視")
+@app_commands.describe(command="請輸入指令名稱", payload="JSON payload")
+async def the_command(interaction: discord.Interaction, command: str, payload: str | None = None):
+    await interaction.response.defer()
+    try:
+        data = json.loads(payload) if payload else None
+    except json.JSONDecodeError:
+        await interaction.followup.send("❌ JSON 格式錯誤！請檢查 payload。", ephemeral=True)
+        return
+    await ha_command(command, data)
+    await interaction.followup.send(f"✅ 已發送指令 {command}, payload={data}")
 
 
 @bot.tree.command(name="stat", description="查看鬧鐘狀態與倒數")
