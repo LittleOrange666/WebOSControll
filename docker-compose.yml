@@ -1,14 +1,15 @@
 services:
   webos-bot:
-    image: littleorange666/webos_alarm:1.0.5
+    image: littleorange666/webos_alarm:1.0.6
     restart: on-failure
     environment:
       - TV_MAC=${TV_MAC}
-      - YT_TARGET=${YT_TARGET}
       - DC_TOKEN=${DC_TOKEN}
       - HA_TOKEN=${HA_TOKEN}
       - HA_HOST=${HA_HOST}
       - TV_ENTITY=${TV_ENTITY}
+      - GC_ENTITY=${GC_ENTITY}
+      - MEDIA_ID=${MEDIA_ID}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

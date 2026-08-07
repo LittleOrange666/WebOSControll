@@ -1,20 +1,20 @@
 # 📺 LG webOS TV Discord 鬧鐘與控制系統 (WebOSControl)
 
 [![Python Version](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
-[![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](https://www.docker.com/)
+[![Docker Image](https://img.shields.io/badge/docker-1.0.6-brightgreen.svg)](https://hub.docker.com/r/littleorange666/webos_alarm)
 [![discord.py](https://img.shields.io/badge/discord.py-2.0+-5865F2.svg)](https://github.com/Rapptz/discord.py)
 
-一個結合 **Discord Bot** 與 **Home Assistant / webOS API** 的智慧電視鬧鐘與遠端控制系統。專為 LG webOS 電視設計，支援定時喚醒電視、自動播放指定 YouTube 影片、控制音量，以及透過 Discord Slash Commands 輕鬆進行遠端管理。
+一個結合 **Discord Bot** 與 **Home Assistant / webOS API** 的智慧電視鬧鐘與遠端控制系統。專為 LG webOS 電視設計，支援定時喚醒電視、透過 Home Assistant (Google Cast / Media Player) 自動串流播放指定影音、控制音量，以及透過 Discord Slash Commands 進行遠端管理。
 
 ---
 
 ## ✨ 主要特色 (Key Features)
 
 - ⏰ **Discord 鬧鐘機器人**：透過斜線指令 (`/`) 靈活設定鬧鐘時間、啟用狀態、音量大小與響鈴持續時間。
-- 📺 **自動化喚醒與播放**：響鈴時自動發送 Wake-on-LAN 封包喚醒電視，設定音量並自動開啟指定 YouTube 影片。
-- 🏠 **Home Assistant 整合**：透過 HA REST API 達成高穩定度的媒體播放器狀態監控與指令發送。
-- 🐳 **容器化部署 (Docker & Docker Compose)**：預先配置 Dockerfile 與 `docker-compose.yml`，適合部署於 NAS、樹莓派或雲端伺服器。
-- 🛠️ **獨立 webOS 腳本**：內建配對金鑰擷取 (`get_key.py`)、應用程式清單查詢 (`list.py`)、直接關閉 (`close.py`) 與視窗自動投射等實用腳本。
+- 📺 **自動化喚醒與媒體播放**：響鈴時發送 Wake-on-LAN 封包喚醒電視、設定音量，並透過 Home Assistant 媒體播放服務 (`media_player/play_media`) 串流播放指定影音內容。
+- 🏠 **Home Assistant 整合**：透過 HA REST API 進行開關機狀態監控、媒體串流與指令控制，具備超時與例外處理機制。
+- 🐳 **容器化部署 (Docker & Docker Compose)**：提供 Dockerfile 與 `docker-compose.yml` (v1.0.6)，可輕鬆部署於 NAS、樹莓派或雲端伺服器。
+- 🛠️ **獨立 webOS 腳本**：內建配對金鑰擷取 (`get_key.py`)、應用程式清單查詢 (`list.py`)、手動關閉 (`close.py`) 與視窗自動投射等實用腳本。
 
 ---
 
@@ -28,12 +28,12 @@ WebOSControll/
 ├── list.py               # 查詢電視上已安裝應用程式 ID 的腳本
 ├── close.py              # 手動關閉電視應用程式與螢幕的腳本
 ├── modules/
-│   ├── tools.py          # 鬧鐘執行邏輯與流程控制
-│   └── utils.py          # Home Assistant REST API 呼叫與環境變數處理
+│   ├── tools.py          # 鬧鐘執行邏輯與流程控制 (整合 ha_play)
+│   └── utils.py          # Home Assistant REST API 請求封裝 (支援超時機制與影音播放)
 ├── data/
 │   └── config.yml        # 鬧鐘動態設定持久化儲存檔案
 ├── Dockerfile            # Docker 映像檔建置檔
-├── docker-compose.yml    # Docker Compose 部署設定檔
+├── docker-compose.yml    # Docker Compose 部署設定檔 (v1.0.6)
 ├── requirements.txt      # Python 相依套件清單
 └── .env                  # 環境變數設定檔 (需自行建立)
 ```
@@ -52,10 +52,11 @@ DC_TOKEN=your_discord_bot_token
 HA_HOST=http://your-homeassistant-ip:8123
 HA_TOKEN=your_long_lived_access_token
 TV_ENTITY=media_player.lg_webos_tv
+GC_ENTITY=media_player.google_cast_tv
 
-# 電視與媒體設定
+# 媒體播放與電視 MAC
 TV_MAC=AA:BB:CC:DD:EE:FF
-YT_TARGET=voNEI6sN9DQ
+MEDIA_ID=https://www.youtube.com/watch?v=voNEI6sN9DQ
 
 # 直連模式設定 (適用於 main.py / get_key.py / list.py)
 TV_IP=192.168.x.x
@@ -69,9 +70,10 @@ TV_NAME=LG_TV_Name
 | `DC_TOKEN` | Discord Bot 的 Token | 自 Discord Developer Portal 取得 |
 | `HA_HOST` | Home Assistant 伺服器位址 | `http://192.168.1.100:8123` |
 | `HA_TOKEN` | Home Assistant 長期存取權杖 (Long-Lived Access Token) | 在 HA 個人設定頁面建立 |
-| `TV_ENTITY` | 電視在 Home Assistant 中顯示的 Entity ID | `media_player.lg_webos_tv` |
+| `TV_ENTITY` | 電視在 Home Assistant 中的 Entity ID | `media_player.lg_webos_tv` |
+| `GC_ENTITY` | Home Assistant 媒體播放器 / Google Cast 實體 ID | `media_player.chromecast` 或 `media_player.lg_tv_cast` |
 | `TV_MAC` | 電視的 MAC 位址 | 用於 Wake-on-LAN 開機 |
-| `YT_TARGET` | 響鈴時欲播放的 YouTube 影片 ID | 例如影片網址 `watch?v=XXXX` 中的 `XXXX` |
+| `MEDIA_ID` | 響鈴時播放的媒體 ID 或 URL | 影音內容 URL / YouTube 連結 |
 | `TV_IP` | 電視的區域網路 IP 位址 | 直連模式使用 |
 | `TV_KEY` | webOS 配對 Key | 可透過 `python get_key.py` 取得 |
 
@@ -83,7 +85,7 @@ TV_NAME=LG_TV_Name
 
 1. 確保已安裝 Docker 與 Docker Compose。
 2. 建立並配置 `.env` 檔案。
-3. 啟動服務：
+3. 啟動服務 (預設使用 `littleorange666/webos_alarm:1.0.6` 映像檔)：
    ```bash
    docker-compose up -d
    ```
@@ -140,3 +142,9 @@ python list.py
 ```bash
 python close.py
 ```
+
+---
+
+## 📜 授權條款 (License)
+
+本專案採用 [MIT License](LICENSE) 授權。

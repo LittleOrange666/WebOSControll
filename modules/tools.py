@@ -2,11 +2,9 @@ import asyncio
 
 from loguru import logger
 
-from .utils import get_env, ha_turn_on, ha_turn_off, ha_ison, ha_command, ha_button
+from .utils import get_env, ha_turn_on, ha_turn_off, ha_ison, ha_command, ha_button, ha_play
 
 MAC = get_env("TV_MAC")
-YT_TARGET = get_env("YT_TARGET")
-YT_APPID = "youtube.leanback.v4"
 
 async def init():
     on = await ha_ison()
@@ -16,13 +14,10 @@ async def init():
         await asyncio.sleep(5)
 
 async def play(volume: int):
-    params = {
-        "contentTarget": "https://www.youtube.com/watch?v="+YT_TARGET
-    }
     logger.info("正在開啟 YouTube 影片...")
     await ha_command("audio/setVolume", {"volume": volume})
     await asyncio.sleep(5)
-    await ha_command("system.launcher/launch", {"id": YT_APPID, "params": params})
+    await ha_play()
 
 async def stop():
     logger.info("正在關閉 YouTube 影片...")
