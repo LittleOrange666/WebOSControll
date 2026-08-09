@@ -7,10 +7,11 @@ import discord
 import yaml
 from discord import app_commands
 from discord.ext import commands, tasks
+from discord.ui import Modal, TextInput
 from loguru import logger
 
 from modules.tools import run_alarm, get_env, test_alarm, wake_up
-from modules.utils import ha_command, ha_button
+from modules.utils import ha_command, ha_button, send_request
 
 TOKEN = get_env("DC_TOKEN")
 
@@ -233,6 +234,38 @@ async def trigger(interaction: discord.Interaction, seconds: int | None = None, 
     else:
         await interaction.edit_original_response(content="響鈴結束！")
 
+
+class CodeModal(Modal, title="提交指令"):
+    domain = TextInput(label="domain", placeholder="Ex. media_player")
+    service = TextInput(label="service", placeholder="Ex. play_media")
+    payload = TextInput(
+        label="payload",
+        style=discord.TextStyle.paragraph,
+        placeholder="貼上你的payload...",
+        max_length=4000
+    )
+
+    def __init__(self):
+        super().__init__()
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(thinking=True)
+        try:
+            data = json.loads(self.payload.value)
+        except json.JSONDecodeError:
+            await interaction.followup.send("❌ JSON 格式錯誤！請檢查 payload。", ephemeral=True)
+            return
+        domain_value = self.domain.value.strip()
+        service_value = self.service.value.strip()
+        uri = f"/api/services/{domain_value}/{service_value}"
+        await send_request(uri, data)
+        await interaction.followup.send(f"✅ 已發送指令 {domain_value}/{service_value}, payload={data}")
+
+
+@bot.tree.command(name="send", description="發送指令到 Home Assistant")
+async def send(interaction: discord.Interaction):
+    modal = CodeModal()
+    await interaction.response.send_modal(modal)
 
 if __name__ == "__main__":
     bot.run(TOKEN)

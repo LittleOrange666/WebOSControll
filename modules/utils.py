@@ -1,6 +1,8 @@
+import asyncio
 import os
 
 import httpx
+from loguru import logger
 
 
 def get_env(key) -> str:
@@ -9,6 +11,8 @@ def get_env(key) -> str:
         print(f"Please set the {key} environment variable.")
         exit()
     return res
+
+TIMEOUT = 30.0
 
 
 MAC = get_env("TV_MAC")
@@ -24,10 +28,19 @@ headers = {
 
 
 async def send_request(uri: str, payload: dict):
+    logger.info(f"Sending request to {uri} with payload: {payload}")
     url = HA_HOST + uri
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         res = await client.post(url, headers=headers, json=payload)
-        return res.status_code, res.json()
+        return res.status_code==200
+
+
+async def get_info(uri: str):
+    logger.info(f"Getting info from {uri}")
+    url = HA_HOST + uri
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        res = await client.get(url, headers=headers)
+        return res.json()
 
 
 async def ha_turn_on():
@@ -62,16 +75,26 @@ async def ha_button(button: str):
     return await send_request("/api/services/webostv/button", data)
 
 
-async def ha_status():
-    url = HA_HOST + "/api/states/" + TV_ENTITY
-    async with httpx.AsyncClient() as client:
-        res = await client.get(url, headers=headers)
-        return res.status_code, res.json()
+async def ha_status(entity):
+    return await get_info("/api/states/" + entity)
+
+async def ha_state(entity):
+    data = await ha_status(entity)
+    return data["state"]
 
 
 async def ha_ison():
-    status, data = await ha_status()
-    return data["state"] == "on"
+    data = await ha_status(TV_ENTITY)
+    return data["state"] not in ("unavailable", "off")
+
+
+async def wait(limit: int = 30):
+    for _ in range(limit):
+        if await ha_ison() and await ha_state(GC_ENTITY) != "unavailable":
+            return True
+        await asyncio.sleep(1)
+    logger.warning("等待電視開啟超時，請檢查電視狀態。")
+    return False
 
 
 async def ha_play():

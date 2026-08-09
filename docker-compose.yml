@@ -1,6 +1,6 @@
 services:
   webos-bot:
-    image: littleorange666/webos_alarm:1.0.6
+    image: littleorange666/webos_alarm:1.0.7
     restart: on-failure
     environment:
       - TV_MAC=${TV_MAC}

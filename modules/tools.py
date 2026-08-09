@@ -2,7 +2,7 @@ import asyncio
 
 from loguru import logger
 
-from .utils import get_env, ha_turn_on, ha_turn_off, ha_ison, ha_command, ha_button, ha_play
+from .utils import get_env, ha_turn_on, ha_turn_off, ha_ison, ha_command, ha_button, ha_play, wait
 
 MAC = get_env("TV_MAC")
 
@@ -11,12 +11,13 @@ async def init():
     if not on:
         logger.info("電視目前為關閉狀態，嘗試喚醒...")
         await ha_turn_on()
+        await wait()
         await asyncio.sleep(5)
 
 async def play(volume: int):
     logger.info("正在開啟 YouTube 影片...")
     await ha_command("audio/setVolume", {"volume": volume})
-    await asyncio.sleep(5)
+    await asyncio.sleep(3)
     await ha_play()
 
 async def stop():
@@ -46,7 +47,6 @@ async def run_alarm(second: int, volume: int) -> bool:
     logger.info("正在執行鬧鐘...")
     try:
         await init()
-        await asyncio.sleep(5)
         await play(volume)
         await asyncio.sleep(second)
         await stop()
