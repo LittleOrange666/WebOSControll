@@ -21,6 +21,8 @@ HA_HOST = get_env("HA_HOST")
 TV_ENTITY = get_env("TV_ENTITY")
 GC_ENTITY = get_env("GC_ENTITY")
 MEDIA_ID = get_env("MEDIA_ID")
+YT_TARGET = get_env("YT_TARGET")
+YT_APPID = "youtube.leanback.v4"
 headers = {
     "Authorization": "Bearer " + TOKEN,
     "Content-Type": "application/json",
@@ -97,7 +99,19 @@ async def wait(limit: int = 30):
     return False
 
 
+async def ha_play_fallback():
+    logger.warning("Chromecast 異常，使用 YouTube App 播放影片作為 fallback。")
+    data = {
+        "id": YT_APPID,
+        "params": {
+            "contentTarget": "https://www.youtube.com/watch?v=" + YT_TARGET
+        }
+    }
+    return await ha_command("system.launcher/launch", data)
+
 async def ha_play():
+    if await ha_state(GC_ENTITY) == "unavailable":
+        await ha_play_fallback()
     data = {
         "entity_id": GC_ENTITY,
         "media_content_id": MEDIA_ID,
